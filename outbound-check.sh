@@ -14,10 +14,10 @@
 # "--version" print version
 
 # Variable definition
-SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
-SCRIPT_NAME="$(echo $0 | sed 's|\.\/||g')"
-SCRIPT_VERSION="Version v0.0.2 20231219"
 
+#SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
+#SCRIPT_NAME="$(echo $0 | sed 's|\.\/||g')"
+SCRIPT_VERSION="Version v0.0.2 20231219"
 NODE_DNS_SRV="$(grep ^nameserver /etc/resolv.conf | cut -d " " -f 2)"
 API_SERVER_FQDN="$(grep "server:" /var/lib/kubelet/kubeconfig | awk '{print $2}' | cut -d ':' -f 2 | tr -d '/')"
 AZURE_DNS_SERVER="168.63.129.16"
@@ -36,7 +36,7 @@ SRC_CHECK=0
 VERSION=0
 
 # read the options
-TEMP=`getopt -o d:o:akrsh --long dns,outbound,all,k8s-api,required,src,help,version -n 'outbound-check.sh' -- "$@"`
+TEMP=$(getopt -o d:o:akrsh --long dns,outbound,all,k8s-api,required,src,help,version -n 'outbound-check.sh' -- "$@")
 eval set -- "$TEMP"
 
 while true;
@@ -90,7 +90,7 @@ function check_outbound_dst () {
         curl -m 7 --insecure --proxy-insecure --silent -I https://mcr.microsoft.com/v2/
     else
         echo -e "Outbound check using dst = ${OUTBOUND_DST}\n"    
-        curl -v -m 7 --insecure --proxy-insecure --silent ${OUTBOUND_DST} 2>&1
+        curl -v -m 7 --insecure --proxy-insecure --silent "${OUTBOUND_DST}" 2>&1
     fi
     echo -e "\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<_Outbound_<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n"
 }
@@ -100,12 +100,12 @@ function check_outbound_required_fqdn () {
     echo -e ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>_Required_Outbound_>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n"
     echo -e "Outbound check for required FQDNs\n" 
     echo URL = http_status
-    echo mcr.microsoft.com = $(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://mcr.microsoft.com/v2/)
-    echo $API_SERVER_FQDN = $(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://${API_SERVER_FQDN})
-    echo management.azure.com = $(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://management.azure.com:443)
-    echo login.microsoftonline.com = $(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://login.microsoftonline.com:443)
-    echo packages.microsoft.com = $(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://packages.microsoft.com:443)
-    echo acs-mirror.azureedge.net = $(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://acs-mirror.azureedge.net:443)
+    echo mcr.microsoft.com = "$(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://mcr.microsoft.com/v2/)"
+    echo "$API_SERVER_FQDN" = "$(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://"${API_SERVER_FQDN}")"
+    echo management.azure.com = "$(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://management.azure.com:443)"
+    echo login.microsoftonline.com = "$(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://login.microsoftonline.com:443)"
+    echo packages.microsoft.com = "$(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://packages.microsoft.com:443)"
+    echo acs-mirror.azureedge.net = "$(curl -m 7 --insecure --proxy-insecure -s -o /dev/null -I -w "%{http_code}" https://acs-mirror.azureedge.net:443)"
     echo -e "\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<_Required_Outbound_<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n"
 }
 
@@ -123,9 +123,9 @@ function check_outbound_src () {
 function check_all () {
     SHORT_RUN='1'
     echo -e "Running all checks...\n"
-    check_dns $FQDN_DNS_CHECK
-    check_dns $API_SERVER_FQDN
-    check_outbound_dst $OUTBOUND_DST $SHORT_RUN
+    check_dns "$FQDN_DNS_CHECK"
+    check_dns "$API_SERVER_FQDN"
+    check_outbound_dst "$OUTBOUND_DST" "$SHORT_RUN"
     check_outbound_src
     check_outbound_required_fqdn
 }
@@ -168,12 +168,12 @@ then
 else
     if [ $DNS_CHECK -eq 1 ]
     then
-        check_dns $FQDN_DNS_CHECK
+        check_dns "$FQDN_DNS_CHECK"
     fi
 
     if [ $OUT_CHECK -eq 1 ]
     then
-        check_outbound_dst $OUTBOUND_DST $SHORT_RUN
+        check_outbound_dst "$OUTBOUND_DST" "$SHORT_RUN"
     fi
 
     if [ $SRC_CHECK -eq 1 ]
