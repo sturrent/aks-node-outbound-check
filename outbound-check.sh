@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # script name: outbound-check.sh
-# Version v0.0.2 20231219
+# Version v0.0.3 20231221
 # Set of tools to deploy AKS troubleshooting labs
 
 # "-a|--all" run all checks
@@ -17,7 +17,7 @@
 
 #SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
 #SCRIPT_NAME="$(echo $0 | sed 's|\.\/||g')"
-SCRIPT_VERSION="Version v0.0.2 20231219"
+SCRIPT_VERSION="Version v0.0.3 20231221"
 NODE_DNS_SRV="$(grep ^nameserver /etc/resolv.conf | cut -d " " -f 2)"
 API_SERVER_FQDN="$(grep "server:" /var/lib/kubelet/kubeconfig | awk '{print $2}' | cut -d ':' -f 2 | tr -d '/')"
 AZURE_DNS_SERVER="168.63.129.16"
@@ -30,6 +30,7 @@ SHORT_RUN='0'
 ALL=0
 HELP=0
 DNS_CHECK=0
+K8S_API_CHECK=0
 OUT_CHECK=0
 REQUIRED_CHECK=0
 SRC_CHECK=0
@@ -49,6 +50,7 @@ do
             "") shift 2;;
             *) FQDN_DNS_CHECK="$2"; shift 2;;
             esac;;
+        -k|--k8s-api) K8S_API_CHECK=1; shift;;
         -o|--outbound) OUT_CHECK=1; case "$2" in
             -*) shift;;
             "") shift 2;;
@@ -77,6 +79,21 @@ function check_dns () {
         nslookup "$FQDN_DNS_CHECK" "$AZURE_DNS_SERVER"
     fi
     echo -e "\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<_DNS_<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n"
+}
+
+# K8s API check
+function check_k8s_api () {
+    SHORT_RUN="$1"
+    echo -e ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>_K8s_API_>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n"
+    echo -e "Checking API connectivity with URL ${API_SERVER_FQDN}\n"
+
+    if [ "$SHORT_RUN" -eq "1" ]
+    then
+        curl -m 7 --insecure --proxy-insecure --silent -I https://"${API_SERVER_FQDN}":443
+    else
+        curl -v -m 7 --insecure --proxy-insecure --silent https://"${API_SERVER_FQDN}":443 2>&1
+    fi
+    echo -e "\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<_K8s_API_<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n"
 }
 
 # Outbound check
@@ -125,6 +142,7 @@ function check_all () {
     echo -e "Running all checks...\n"
     check_dns "$FQDN_DNS_CHECK"
     check_dns "$API_SERVER_FQDN"
+    check_k8s_api "$SHORT_RUN"
     check_outbound_dst "$OUTBOUND_DST" "$SHORT_RUN"
     check_outbound_src
     check_outbound_required_fqdn
@@ -169,6 +187,11 @@ else
     if [ $DNS_CHECK -eq 1 ]
     then
         check_dns "$FQDN_DNS_CHECK"
+    fi
+
+    if [ $K8S_API_CHECK -eq 1 ]
+    then
+        check_k8s_api "$SHORT_RUN"
     fi
 
     if [ $OUT_CHECK -eq 1 ]
